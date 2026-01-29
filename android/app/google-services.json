@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "83338009381",
+    "firebase_url": "https://programming-mobile-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "programming-mobile",
+    "storage_bucket": "programming-mobile.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:83338009381:android:200a8392a50c70319e58cc",
+        "android_client_info": {
+          "package_name": "com.ush.todolist"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDpuvnAPinWROAFgqA83gB52-GQRAjSG6Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
