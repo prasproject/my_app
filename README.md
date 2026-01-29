@@ -62,15 +62,26 @@ Panduan langkah demi langkah untuk mengubah aplikasi Flutter Todo List dari peny
 
 - **Flutter** terpasang dan bisa dijalankan (`flutter doctor`).
 - **Akun Google** untuk Firebase Console.
-- **Firebase CLI** (opsional, untuk `flutterfire configure`):
-  ```bash
-  npm install -g firebase-tools
-  firebase login
-  ```
-- **FlutterFire CLI** (untuk generate `firebase_options.dart`):
-  ```bash
-  dart pub global activate flutterfire_cli
-  ```
+- **Firebase CLI** (opsional): `npm install -g firebase-tools` bila belum terpasang.
+
+**Urutan langkah setup Firebase & FlutterFire CLI:**
+
+1. Login ke Firebase:
+   ```bash
+   firebase login
+   ```
+
+2. Aktifkan FlutterFire CLI:
+   ```bash
+   dart pub global activate flutterfire_cli
+   ```
+
+3. Generate konfigurasi Firebase (dijalankan dari root project Flutter, lihat [Langkah 2](#4-langkah-2-konfigurasi-flutter-project)):
+   ```bash
+   dart pub global run flutterfire_cli:flutterfire configure
+   ```
+
+4. Tambah dependency di `pubspec.yaml` (lihat [Langkah 2](#4-langkah-2-konfigurasi-flutter-project)): `firebase_core: ^4.4.0`, lalu `flutter pub get`.
 
 ---
 
@@ -130,8 +141,10 @@ flutter pub get
 Dari **root folder project Flutter** (yang berisi `pubspec.yaml`):
 
 ```bash
-flutterfire configure
+dart pub global run flutterfire_cli:flutterfire configure
 ```
+
+Atau jika `dart pub global run` sudah ada di PATH: `flutterfire configure`.
 
 - Pilih project Firebase.
 - Pilih platform (Android, iOS, Web, dll).
