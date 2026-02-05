@@ -21,6 +21,19 @@ Panduan langkah demi langkah untuk mengubah aplikasi Flutter Todo List dari peny
 
 ---
 
+## Penanda di Kode (untuk pengajar & mahasiswa)
+
+Di file-file Dart (`main.dart`, `loginpage.dart`, `signuppage.dart`, `todolistpage.dart`) dipakai penanda komentar agar mudah bedakan mana yang **ditambah untuk Firebase** dan mana **logic lama (local storage)** yang sengaja di-comment:
+
+| Penanda | Arti |
+|--------|------|
+| **`// [DITAMBAH]`** | Kode yang **ditambahkan** untuk Firebase (Realtime Database). |
+| **`// [VERSI LAMA - COMMENT]`** | Logic lama pakai SharedPreferences; **tidak dihapus**, hanya di-comment agar bisa dijelaskan perbandingannya di README. |
+
+Dengan begitu, saat mengajar Anda bisa tunjuk langsung di source code: bagian mana yang baru (Firebase) dan mana yang dulu (local storage).
+
+---
+
 ## Daftar Isi
 
 1. [Tujuan dan Overview](#1-tujuan-dan-overview)
@@ -56,64 +69,62 @@ Panduan langkah demi langkah untuk mengubah aplikasi Flutter Todo List dari peny
 | Todo per user | Key `todos_username` (JSON string) | Node `todolistapps/{username}/{todoId}` |
 | Status login | Key `isLoggedIn`, `currentUser`, `currentName` | Tidak disimpan; setelah login langsung kirim `username` & `displayName` ke halaman Todo |
 
+### Ringkasan singkat (4 tahap besar)
+
+Agar tidak terasa berat, ingat saja empat tahap ini:
+
+1. **Setup** — Buat project Firebase, aktifkan Realtime Database, pasang CLI & dependency Flutter.
+2. **Init** — Inisialisasi Firebase di `main.dart` sekali saja.
+3. **User** — Sign up & login: simpan/baca user di path `users/{username}` (lihat komentar `[DITAMBAH]` / `[VERSI LAMA - COMMENT]` di `loginpage.dart` dan `signuppage.dart`).
+4. **Todo** — Baca/tulis todo di path `todolistapps/{username}` (lihat komentar di `todolistpage.dart`).
+
+Detail tiap tahap ada di bawah; bisa dikerjakan per langkah dan dicocokkan dengan penanda di kode.
+
 ---
 
 ## 2. Prasyarat
 
-- **Flutter** terpasang dan bisa dijalankan (`flutter doctor`).
-- **Akun Google** untuk Firebase Console.
-- **Firebase CLI** (opsional): `npm install -g firebase-tools` bila belum terpasang.
+Yang harus sudah ada:
 
-**Urutan langkah setup Firebase & FlutterFire CLI:**
+- **Flutter** terpasang dan jalan (`flutter doctor`).
+- **Akun Google** (untuk Firebase Console).
+- **Node.js** (opsional, hanya kalau mau pakai Firebase CLI): untuk `npm install -g firebase-tools`.
 
-1. Login ke Firebase:
-   ```bash
-   firebase login
-   ```
+**Urutan setup Firebase & FlutterFire (jalankan berurutan):**
 
-2. Aktifkan FlutterFire CLI:
-   ```bash
-   dart pub global activate flutterfire_cli
-   ```
-
-3. Generate konfigurasi Firebase (dijalankan dari root project Flutter, lihat [Langkah 2](#4-langkah-2-konfigurasi-flutter-project)):
-   ```bash
-   dart pub global run flutterfire_cli:flutterfire configure
-   ```
-
-4. Tambah dependency di `pubspec.yaml` (lihat [Langkah 2](#4-langkah-2-konfigurasi-flutter-project)): `firebase_core: ^4.4.0`, lalu `flutter pub get`.
+1. Pasang Firebase CLI (jika belum): `npm install -g firebase-tools`
+2. Login: `firebase login`
+3. Pasang FlutterFire CLI: `dart pub global activate flutterfire_cli`
+4. Dari **folder root project** (yang ada `pubspec.yaml`), jalankan: `dart pub global run flutterfire_cli:flutterfire configure` → pilih project & platform.
+5. Di `pubspec.yaml` tambah `firebase_core` dan `firebase_database`, lalu jalankan `flutter pub get` (detail di Langkah 2).
 
 ---
 
 ## 3. Langkah 1: Setup Firebase Project & Realtime Database
 
-### 3.1 Buat/gunakan project Firebase
+Lakukan di browser (Firebase Console). Tidak perlu coding.
+
+### 3.1 Buat project Firebase
 
 1. Buka [Firebase Console](https://console.firebase.google.com/).
-2. Klik **Add project** atau pilih project yang sudah ada (misalnya `programming-mobile`).
-3. Ikuti wizard (Google Analytics boleh diaktifkan atau tidak).
+2. Klik **Add project** (atau pilih project yang sudah ada).
+3. Ikuti wizard; Google Analytics boleh diaktifkan atau tidak.
 
 ### 3.2 Aktifkan Realtime Database
 
-1. Di sidebar kiri, pilih **Build** → **Realtime Database**.
+1. Di menu kiri: **Build** → **Realtime Database**.
 2. Klik **Create Database**.
-3. Pilih lokasi (misalnya **asia-southeast1**).
-4. Pilih mode aturan:
-   - **Test mode** untuk development (baca/tulis terbuka untuk sementara).
-   - **Production** untuk production (wajib atur Rules).
-
-5. Catat **Database URL**, contoh:
-   ```
-   https://programming-mobile-default-rtdb.asia-southeast1.firebasedatabase.app
-   ```
+3. Pilih lokasi (disarankan **asia-southeast1**).
+4. Pilih **Test mode** dulu (untuk belajar); nanti untuk production atur Rules.
+5. Catat **Database URL** (akan dipakai FlutterFire).
 
 ### 3.3 Daftarkan aplikasi (Android / iOS / Web)
 
-- **Android:** Tambah app Android, isi package name (misalnya `com.example.my_app`), download `google-services.json` ke `android/app/`.
-- **Web:** Tambah app Web, dapatkan object konfigurasi (apiKey, authDomain, databaseURL, dll). Bisa dipakai nanti di `firebase_options.dart`.
-- **iOS:** Jika perlu, tambah app iOS dan letakkan `GoogleService-Info.plist`.
+- **Android:** Tambah app → isi package name (mis. `com.example.my_app`) → download `google-services.json` → taruh di `android/app/`.
+- **Web:** Tambah app Web → nanti konfigurasinya akan masuk ke `firebase_options.dart`.
+- **iOS:** Jika dipakai, tambah app iOS dan letakkan `GoogleService-Info.plist`.
 
-Konfigurasi untuk Flutter akan digenerate oleh FlutterFire CLI di langkah berikutnya.
+File konfigurasi lengkap untuk Flutter akan dibuat oleh **FlutterFire CLI** di Langkah 2 (Anda tidak perlu copy-paste manual).
 
 ---
 
@@ -156,7 +167,9 @@ Pastikan **databaseURL** di `firebase_options.dart` mengarah ke Realtime Databas
 
 ## 5. Langkah 3: Inisialisasi Firebase di `main.dart`
 
-Aplikasi harus menginisialisasi Firebase sebelum menjalankan UI.
+Satu kali saja: aplikasi harus inisialisasi Firebase sebelum UI jalan. Tanpa ini, semua panggilan ke Realtime Database akan gagal.
+
+**Di kode:** Di `lib/main.dart` bagian inisialisasi Firebase ditandai dengan `[DITAMBAH]`; versi lama tanpa Firebase ditandai `[VERSI LAMA - COMMENT]`.
 
 **Contoh `lib/main.dart`:**
 
@@ -253,6 +266,8 @@ todolistapps
 
 Tujuan: saat user daftar, simpan **name** dan **password** ke Realtime Database di path `users/{username}`.
 
+**Di kode:** Di `lib/signuppage.dart` — logic Firebase ditandai `[DITAMBAH]`, logic lama SharedPreferences (simpan user ke local) ditandai `[VERSI LAMA - COMMENT]`.
+
 ### 7.1 Import
 
 ```dart
@@ -314,6 +329,8 @@ Lalu tampilkan SnackBar sukses dan pindah ke `LoginPage` (misalnya setelah 1 det
 
 Tujuan: baca data user dari `users/{username}`. Jika password cocok, pindah ke halaman Todo dan kirim **username** serta **displayName** (nama).
 
+**Di kode:** Di `lib/loginpage.dart` — baca user dari Firebase dan navigasi dengan parameter ditandai `[DITAMBAH]`; logic lama baca/simpan session pakai SharedPreferences ditandai `[VERSI LAMA - COMMENT]`.
+
 ### 8.1 Import
 
 ```dart
@@ -373,7 +390,9 @@ Navigator.pushReplacement(
 
 ## 9. Langkah 7: Todo List — Baca/Tulis Todo dari Firebase
 
-Tujuan: data todo per user di path `todolistapps/{username}`; bisa dibaca sekali, dan lebih baik lagi **dengan listener realtime** agar UI selalu sinkron.
+Tujuan: data todo per user di path `todolistapps/{username}`; dibaca dengan **listener realtime** agar UI selalu sinkron dengan Firebase.
+
+**Di kode:** Di `lib/todolistpage.dart` — koneksi ke Realtime Database, listener `onValue`, dan `_saveTodosToFirebase` ditandai `[DITAMBAH]`; logic lama load/save todo dari SharedPreferences ditandai `[VERSI LAMA - COMMENT]`.
 
 ### 9.1 Constructor TodoListPage menerima user
 
@@ -476,7 +495,7 @@ Panggil `_saveTodosToFirebase()` setelah:
 
 ## 10. Langkah 8: Logout
 
-Tidak ada lagi "session" yang disimpan di SharedPreferences. Logout cukup **kembali ke halaman Login** dan buang halaman Todo dari stack:
+Tidak ada session di SharedPreferences. Logout = **kembali ke halaman Login** dan buang halaman Todo dari stack. Di kode: `todolistpage.dart` — bagian logout ditandai `[DITAMBAH]`; hapus key session di SharedPreferences (jika dulu dipakai) ada di `[VERSI LAMA - COMMENT]`.
 
 ```dart
 if (confirm == true) {
@@ -548,6 +567,15 @@ Untuk production, batasi baca/tulis per user (biasanya pakai Firebase Authentica
 | **Package** | `shared_preferences` | `firebase_core`, `firebase_database` |
 
 Dengan mengikuti langkah di atas, **semua logika yang sebelumnya memakai SharedPreferences diganti ke Realtime Database**, dan aplikasi siap dipakai untuk mengajar atau dikembangkan lebih lanjut.
+
+---
+
+### Tips untuk mahasiswa
+
+- Kerjakan **per langkah** (Langkah 1 selesai dulu, baru Langkah 2).
+- Di kode, cari komentar **`[DITAMBAH]`** = bagian Firebase; **`[VERSI LAMA - COMMENT]`** = logic lama (local storage) yang sengaja di-comment untuk perbandingan.
+- Kalau error saat `flutterfire configure`, pastikan sudah `firebase login` dan project Firebase sudah punya Realtime Database.
+- Untuk development, Rules Realtime Database boleh pakai Test mode; untuk tugas akhir/production atur Rules yang aman.
 
 ---
 

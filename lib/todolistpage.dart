@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+// [DITAMBAH] Import Firebase untuk baca/tulis todo di Realtime Database
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'loginpage.dart';
@@ -6,21 +7,18 @@ import 'loginpage.dart';
 // ============================================
 // MODEL DATA TODO
 // ============================================
-// Class untuk merepresentasikan satu item todo
-// Menggunakan class ini membuat kode lebih terorganisir
 class TodoItem {
-  final String id; // Unique identifier untuk setiap todo
-  final String text; // Teks dari todo item
-  final bool isCompleted; // Status apakah todo sudah selesai atau belum
+  final String id;
+  final String text;
+  final bool isCompleted;
 
   TodoItem({required this.id, required this.text, this.isCompleted = false});
 
-  // Method untuk mengubah TodoItem menjadi Map (untuk disimpan ke SharedPreferences)
+  // Dipakai untuk simpan ke Firebase maupun (dulu) ke SharedPreferences
   Map<String, dynamic> toJson() {
     return {'id': id, 'text': text, 'isCompleted': isCompleted};
   }
 
-  // Method untuk membuat TodoItem dari Map (untuk membaca dari SharedPreferences)
   factory TodoItem.fromJson(Map<String, dynamic> json) {
     return TodoItem(
       id: json['id'],
@@ -43,7 +41,8 @@ class TodoItem {
 // ============================================
 // HALAMAN TODO LIST
 // ============================================
-// Halaman utama setelah login, menampilkan list todo user
+// [DITAMBAH] User identity dari parameter (dikirim dari LoginPage), todo dari Firebase
+// [VERSI LAMA - COMMENT] Dulu: username/nama dibaca dari SharedPreferences (currentUser, currentName), todo dari key todos_username
 class TodoListPage extends StatefulWidget {
   const TodoListPage({
     super.key,
@@ -59,14 +58,12 @@ class TodoListPage extends StatefulWidget {
 }
 
 class _TodoListPageState extends State<TodoListPage> {
-  // List untuk menyimpan semua todo items
   List<TodoItem> _todos = [];
 
-  // Variabel untuk menyimpan nama user yang sedang login
   String _currentName = '';
   String _currentUsername = '';
 
-  // Reference ke Firebase Realtime Database untuk todo user ini
+  // [DITAMBAH] Reference ke path todolistapps/{username} di Realtime Database
   DatabaseReference? _todosRef;
 
   // Controller untuk input field menambah todo baru
@@ -82,22 +79,17 @@ class _TodoListPageState extends State<TodoListPage> {
     _loadData();
   }
 
-  // Fungsi untuk memuat data user dan menghubungkan todo list ke Realtime Database
+  // ---------- [DITAMBAH] Load user dari parameter, todo dari Firebase Realtime Database ----------
   Future<void> _loadData() async {
-    // Ambil data user dari parameter yang dikirim dari halaman login
     _currentUsername = widget.username;
     _currentName = widget.displayName;
 
-    // Buat reference ke path Realtime Database untuk todo user ini
-    // Struktur: todolistapps/{username}/{todoId}
-    // Pakai databaseURL dari options agar region asia-southeast1 dipakai (penting untuk web)
     final String? dbUrl = Firebase.app().options.databaseURL;
     final FirebaseDatabase database = dbUrl != null && dbUrl.isNotEmpty
         ? FirebaseDatabase.instanceFor(app: Firebase.app(), databaseURL: dbUrl)
         : FirebaseDatabase.instance;
     _todosRef = database.ref('todolistapps/$_currentUsername');
 
-    // Dengarkan perubahan data secara realtime
     _todosRef!.onValue.listen((DatabaseEvent event) {
       final snapshot = event.snapshot;
       final value = snapshot.value;
@@ -105,7 +97,6 @@ class _TodoListPageState extends State<TodoListPage> {
       if (!mounted) return;
 
       if (value == null) {
-        // Jika belum ada data di Realtime Database, gunakan todo default lalu simpan ke Firebase
         _todos = [
           TodoItem(id: '1', text: 'Bangun Tidur', isCompleted: true),
           TodoItem(id: '2', text: 'Absen Kerja', isCompleted: false),
@@ -115,7 +106,6 @@ class _TodoListPageState extends State<TodoListPage> {
         ];
         _saveTodosToFirebase();
       } else if (value is Map) {
-        // Parse map dari Firebase menjadi list TodoItem
         final List<TodoItem> loaded = [];
         value.forEach((key, dynamic v) {
           if (v is Map) {
@@ -132,14 +122,19 @@ class _TodoListPageState extends State<TodoListPage> {
       setState(() {});
     });
   }
+  // ---------- akhir [DITAMBAH] ----------
 
-  // ============================================
-  // FUNGSI UNTUK MENYIMPAN TODO KE FIREBASE REALTIME DATABASE
-  // ============================================
+  // [VERSI LAMA - COMMENT] Load user & todo dari SharedPreferences:
+  // final prefs = await SharedPreferences.getInstance();
+  // _currentUsername = prefs.getString('currentUser') ?? '';
+  // _currentName = prefs.getString('currentName') ?? _currentUsername;
+  // String? json = prefs.getString('todos_$_currentUsername');
+  // if (json != null) { _todos = (jsonDecode(json) as List).map((e) => TodoItem.fromJson(e)).toList(); }
+
+  // [DITAMBAH] Simpan todo ke Firebase Realtime Database (path: todolistapps/{username})
   Future<void> _saveTodosToFirebase() async {
     if (_todosRef == null) return;
 
-    // Ubah list todo menjadi map {todoId: data}
     final Map<String, dynamic> updates = {};
     for (final todo in _todos) {
       updates[todo.id] = todo.toJson();
@@ -147,6 +142,8 @@ class _TodoListPageState extends State<TodoListPage> {
 
     await _todosRef!.set(updates);
   }
+  // [VERSI LAMA - COMMENT] Save todo ke SharedPreferences:
+  // prefs.setString('todos_$_currentUsername', jsonEncode(_todos.map((e) => e.toJson()).toList()));
 
   // ============================================
   // FUNGSI UNTUK MENAMBAH TODO BARU
@@ -177,7 +174,7 @@ class _TodoListPageState extends State<TodoListPage> {
       _todos.add(newTodo);
     });
 
-    // Simpan ke Firebase Realtime Database
+    // [DITAMBAH] Simpan ke Firebase (dulu: prefs.setString('todos_...', ...))
     _saveTodosToFirebase();
 
     // Clear input field
@@ -199,20 +196,15 @@ class _TodoListPageState extends State<TodoListPage> {
       }
     });
 
-    // Simpan perubahan ke Firebase Realtime Database
+    // [DITAMBAH] Simpan ke Firebase
     _saveTodosToFirebase();
   }
 
-  // ============================================
-  // FUNGSI UNTUK MENGHAPUS TODO YANG SUDAH SELESAI
-  // ============================================
   void _cleanCompletedTodos() {
     setState(() {
-      // Hapus semua todo yang sudah completed
       _todos.removeWhere((todo) => todo.isCompleted);
     });
 
-    // Simpan perubahan ke Firebase Realtime Database
     _saveTodosToFirebase();
 
     // Tampilkan pesan konfirmasi
@@ -224,11 +216,9 @@ class _TodoListPageState extends State<TodoListPage> {
     );
   }
 
-  // ============================================
-  // FUNGSI UNTUK LOGOUT
-  // ============================================
+  // [DITAMBAH] Logout = pushReplacement ke LoginPage (tidak simpan session di device)
+  // [VERSI LAMA - COMMENT] Dulu: prefs.setBool('isLoggedIn', false); prefs.remove('currentUser'); prefs.remove('currentName'); lalu pushReplacement ke LoginPage
   Future<void> _handleLogout() async {
-    // Tampilkan dialog konfirmasi
     bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -248,7 +238,6 @@ class _TodoListPageState extends State<TodoListPage> {
     );
 
     if (confirm == true) {
-      // Redirect ke halaman login
       if (mounted) {
         Navigator.pushReplacement(
           context,

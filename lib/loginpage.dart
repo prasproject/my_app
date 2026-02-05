@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+// [DITAMBAH] Import Firebase (Core + Realtime Database) untuk baca user dari cloud
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'signuppage.dart';
@@ -8,7 +9,8 @@ import 'todolistpage.dart';
 // HALAMAN LOGIN (SIGN IN)
 // ============================================
 // Halaman ini digunakan untuk login user yang sudah terdaftar
-// Data user dibaca dari Firebase Realtime Database
+// [DITAMBAH] Data user dibaca dari Firebase Realtime Database
+// [VERSI LAMA - COMMENT] Dulu: data user & session disimpan/baca dari SharedPreferences (local)
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -31,23 +33,21 @@ class _LoginPageState extends State<LoginPage> {
 
     // Validasi: pastikan username dan password tidak kosong
     if (username.isEmpty || password.isEmpty) {
-      // Tampilkan pesan error menggunakan SnackBar
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Username dan Password tidak boleh kosong!'),
           backgroundColor: Colors.red,
         ),
       );
-      return; // Hentikan eksekusi jika validasi gagal
+      return;
     }
 
-    // Dapatkan instance Realtime Database (menggunakan databaseURL dari konfigurasi Firebase)
+    // ---------- [DITAMBAH] Baca user dari Firebase Realtime Database ----------
     final String? dbUrl = Firebase.app().options.databaseURL;
     final FirebaseDatabase database = dbUrl != null && dbUrl.isNotEmpty
         ? FirebaseDatabase.instanceFor(app: Firebase.app(), databaseURL: dbUrl)
         : FirebaseDatabase.instance;
 
-    // Baca data user yang tersimpan di Firebase
     final DatabaseReference userRef = database.ref('users/$username');
     final DataSnapshot snapshot = await userRef.get();
 
@@ -58,10 +58,21 @@ class _LoginPageState extends State<LoginPage> {
       savedPassword = data['password']?.toString();
       savedName = data['name']?.toString();
     }
+    // ---------- akhir [DITAMBAH] ----------
 
-    // Validasi: cek apakah user terdaftar dan password benar
+    // [VERSI LAMA - COMMENT] Logic login pakai SharedPreferences (local storage):
+    // final prefs = await SharedPreferences.getInstance();
+    // String? savedPassword = prefs.getString('user_$username');  // key: user_username
+    // String? savedName = prefs.getString('name_$username');       // key: name_username
+    // if (savedPassword == null) { ... user tidak ditemukan ... }
+    // if (savedPassword != password) { ... password salah ... }
+    // prefs.setBool('isLoggedIn', true);
+    // prefs.setString('currentUser', username);
+    // prefs.setString('currentName', savedName ?? username);
+    // Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => TodoListPage()));
+    // (TodoListPage dulu baca currentUser/currentName dari prefs di initState)
+
     if (savedPassword == null) {
-      // User tidak ditemukan
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -74,7 +85,6 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     if (savedPassword != password) {
-      // Password salah
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Password salah!'),
@@ -84,9 +94,7 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    // Navigasi ke halaman Todo List
-    // Navigator.pushReplacement digunakan untuk mengganti halaman saat ini
-    // sehingga user tidak bisa kembali ke halaman login dengan tombol back
+    // [DITAMBAH] Navigasi ke Todo List dengan kirim username & displayName (tidak simpan session di local)
     if (mounted) {
       Navigator.pushReplacement(
         context,

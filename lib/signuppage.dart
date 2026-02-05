@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+// [DITAMBAH] Import Firebase untuk simpan user ke Realtime Database
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'loginpage.dart';
@@ -7,7 +8,8 @@ import 'loginpage.dart';
 // HALAMAN SIGN UP (DAFTAR)
 // ============================================
 // Halaman ini digunakan untuk mendaftarkan user baru
-// Data user akan disimpan menggunakan Firebase Realtime Database
+// [DITAMBAH] Data user disimpan ke Firebase Realtime Database (path: users/{username})
+// [VERSI LAMA - COMMENT] Dulu: simpan dengan SharedPreferences (key user_username, name_username)
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
 
@@ -66,19 +68,16 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
-    // Dapatkan instance Realtime Database (menggunakan databaseURL dari konfigurasi Firebase)
+    // ---------- [DITAMBAH] Simpan user ke Firebase Realtime Database ----------
     final String? dbUrl = Firebase.app().options.databaseURL;
     final FirebaseDatabase database = dbUrl != null && dbUrl.isNotEmpty
         ? FirebaseDatabase.instanceFor(app: Firebase.app(), databaseURL: dbUrl)
         : FirebaseDatabase.instance;
 
-    // Reference ke node user berdasarkan username
     final DatabaseReference userRef = database.ref('users/$username');
 
-    // Cek apakah username sudah terdaftar
     final DataSnapshot existingSnapshot = await userRef.get();
     if (existingSnapshot.exists) {
-      // Username sudah digunakan
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Username sudah digunakan! Silakan gunakan username lain.'),
@@ -88,13 +87,17 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
-    // ============================================
-    // SIMPAN DATA USER KE FIREBASE REALTIME DATABASE
-    // ============================================
     await userRef.set({
       'name': name,
       'password': password,
     });
+    // ---------- akhir [DITAMBAH] ----------
+
+    // [VERSI LAMA - COMMENT] Sign up pakai SharedPreferences (local storage):
+    // final prefs = await SharedPreferences.getInstance();
+    // if (prefs.containsKey('user_$username')) { ... username sudah dipakai ... }
+    // prefs.setString('user_$username', password);   // key: user_username
+    // prefs.setString('name_$username', name);       // key: name_username
 
     // Tampilkan pesan sukses
     if (mounted) {
